@@ -20,28 +20,28 @@ app.use(cookieParser());
 app.use(cors());
 
 
-const io = new SocketIO(server, {
-  cors: true,
-});
+// const io = new SocketIO(server, {
+//   cors: true,
+// });
 
 
-io.on("connection", (socket) => {
-  socket.on("user:join", (data) => {
-    console.warn(
-      "user:join",
-      "New user joined with socket.id ",
-      socket.id,
-      " data: ",
-      data
-    );
-  });
-});
+// io.on("connection", (socket) => {
+//   socket.on("user:join", (data) => {
+//     console.warn(
+//       "user:join",
+//       "New user joined with socket.id ",
+//       socket.id,
+//       " data: ",
+//       data
+//     );
+//   });
+// });
 
 // routes import
 import userRouter from './routes/public/user.routes.js'
 
 // Router
-app.route('/api', userRouter);
+app.use('/api/v1/user', userRouter);
 
 connectDB();
 server.listen(PORT, () => console.log(`Server is listening on port: ${PORT}`));

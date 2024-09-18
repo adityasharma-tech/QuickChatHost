@@ -1,9 +1,8 @@
-const { Router } = require("express");
-const { sendOtp, authenticate } = require("../../controllers/user.controller.js");
+import { Router } from "express";
+import { authenticate } from "../../controllers/user.controller.js";
 
 const router = Router();
 
-router.post("/send-otp", sendOtp);
-router.post("/authenticate", authenticate);
+router.route("/authenticate").post(authenticate);
 
-export default router
+export default router;

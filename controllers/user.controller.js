@@ -2,62 +2,87 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import axios from "axios";
-import jwt from 'jsonwebtoken'
+import jwt from "jsonwebtoken";
+import { User } from "../models/user.model.js";
+import mongoose from "mongoose";
 
-const sendOtp = asyncHandler(async (req, res) => {
-  if (!req.body.phone_number) {
-    throw new ApiError(400, "phone_number is a required field");
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar file is missing");
   }
-  const options = {
-    method: "POST",
-    url: process.env.MSG91_ENDPOINT + "/otp",
-    params: {
-      mobile: req.body.phone_number,
-      authkey: process.env.MSG91_AUTHKEY,
-      realTimeResponse: "1",
+
+  // TODO: delete old image
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+
+  if (!avatar.url) {
+    throw new ApiError(400, "Error while uploading on avatar");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    {
+      phone_number: req.user.phone_number,
     },
-    headers: { "Content-Type": "application/JSON" },
-  };
-  const { data } = await axios.request(options);
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        request_id: data.request_id,
+    {
+      $set: {
+        avatar: avatar.url,
       },
-      "Account created successfully."
-    )
-  );
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar image updated successfully"));
 });
 
 const authenticate = asyncHandler(async (req, res) => {
-  const { phone_number, otp } = req.body;
-  if (!phone_number || !otp)
-    throw new ApiError(400, "ALl fields are required.");
+  const { verification_token } = req.body;
+  if (!verification_token)
+    throw new ApiError(400, "verification_token is required.");
 
-  const options = {
-    method: "GET",
-    url: `${process.env.MSG91_ENDPOINT}/otp/verify`,
-    params: { otp, mobile: phone_number },
-    headers: { authkey: process.env.MSG91_AUTHKEY },
-  };
+  const { data } = await axios.post(
+    `${process.env.MSG91_ENDPOINT}/widget/verifyAccessToken`,
+    {
+      authkey: process.env.MSG91_AUTH_KEY,
+      "access-token": verification_token,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  console.log(data);
 
-  const { data } = await axios.request(options);
-  if (data["type"] == "error") throw new ApiError(400, data.message);
-
-  if(data["type"] == "success"){
-    const token = jwt.sign({
-      phone_number
-    }, process.env.JWT_SECRET, {
-      expiresIn: '10d'
-    })
+  if (data["type"] == "success") {
+    const token = jwt.sign(
+      {
+        id: new mongoose.Types.ObjectId(),
+        user_data: {
+          phone_number: data.message,
+        },
+      },
+      process.env.ACCESS_TOKEN_SECRET,
+      {
+        expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+        algorithm: "HS256",
+      }
+    );
     return res.status(200).json(
-      new ApiResponse(200, {
-        accessToken: token,
-        refreshToken: ''
-      }, "login success")
-    )
+      new ApiResponse(
+        200,
+        {
+          access_token: token,
+        },
+        "login success"
+      )
+    );
+  } else {
+    throw new ApiError(400, data.message);
   }
 });
 
-export { sendOtp, authenticate };
+export { authenticate, updateUserAvatar };
