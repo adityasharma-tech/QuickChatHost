@@ -10,7 +10,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
 
   if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is missing");
+    return res.status(400).json(new ApiError(400, "Avatar file is missing"))
   }
 
   // TODO: delete old image
@@ -18,7 +18,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar.url) {
-    throw new ApiError(400, "Error while uploading on avatar");
+    return res.status(400).json(new ApiError(400, "Error while uploading on avatar"));
   }
 
   const user = await User.findByIdAndUpdate(
@@ -41,7 +41,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 const authenticate = asyncHandler(async (req, res) => {
   const { verification_token } = req.body;
   if (!verification_token)
-    throw new ApiError(400, "verification_token is required.");
+    return res.status(400).json(new ApiError(400, "verification_token is required."));
 
   const { data } = await axios.post(
     `${process.env.MSG91_ENDPOINT}/widget/verifyAccessToken`,
@@ -81,7 +81,9 @@ const authenticate = asyncHandler(async (req, res) => {
       )
     );
   } else {
-    throw new ApiError(400, data.message);
+    return res.status(400).json(
+      new ApiError(400, data.message)
+    )
   }
 });
 
