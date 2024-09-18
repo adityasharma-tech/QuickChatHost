@@ -37,8 +37,15 @@ app.use(cors());
 //   });
 // });
 
+app.get('/', (_, res)=>{
+    res.status(200).json(
+        new ApiResponse(200, null, "Success"),
+    )
+})
+
 // routes import
 import userRouter from './routes/public/user.routes.js'
+import { ApiResponse } from "./utils/ApiResponse.js";
 
 // Router
 app.use('/api/v1/user', userRouter);
