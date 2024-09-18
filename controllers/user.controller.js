@@ -60,7 +60,9 @@ const authenticate = asyncHandler(async (req, res) => {
   if (data["type"] == "success") {
     const token = jwt.sign(
       {
-        id: new mongoose.Types.ObjectId(),
+        aud: "user",
+        sub: data.message,
+        type: "normal",
         user_data: {
           phone_number: data.message,
         },
