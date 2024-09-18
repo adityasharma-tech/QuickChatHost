@@ -9,7 +9,6 @@ import { Server as SocketIO } from "socket.io";
 import jwt from "jsonwebtoken";
 import { createClient as createRedisClient } from "redis";
 import { ApiResponse } from "./utils/ApiResponse.js";
-import serviceAccount from "./config/fbadmin.creds.json" assert { type: "json" };
 import { ApiError } from "./utils/ApiError.js";
 import { getMessaging } from "firebase-admin/messaging";
 
@@ -17,6 +16,8 @@ import { PORT } from "./lib/constants.js";
 import connectDB from "./lib/db.js";
 
 dotenv.config({ path: "./.env" });
+
+// import serviceAccount from "./config/fbadmin.creds.json" assert { type: "json" };
 
 const app = express();
 const server = http.createServer(app);
@@ -27,8 +28,20 @@ const redisClient = createRedisClient({
     port: process.env.REDIS_PORT,
   },
 });
+
 const firebaseApp = initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert({
+    type: process.env.FIREBASE_TYPE,
+    project_id: process.env.FIREBASE_PROJECT_ID,
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: process.env.FIREBASE_AUTH_URI,
+    token_uri: process.env.FIREBASE_TOKEN_URI,
+    auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+  }),
   databaseURL: process.env.DATABASE_URL,
 });
 
@@ -105,22 +118,27 @@ ws.on("connection", (socket) => {
       .get(phone_number)
       .then((value) => {
         if (value)
-          ws.to(value).emit("message:recieved", {
-            message_id,
-            message_mode,
-            reply_id: reply_id ?? "",
-            message,
-            phone_number,
-            display_name,
-            caption: caption ?? ""
-          }).then(()=>{
-            return callback(new ApiResponse(200, {
-                message_id,
-                status: "recieved"
-            }));
-          })
+          ws.to(value)
+            .emit("message:recieved", {
+              message_id,
+              message_mode,
+              reply_id: reply_id ?? "",
+              message,
+              phone_number,
+              display_name,
+              caption: caption ?? "",
+            })
+            .then(() => {
+              return callback(
+                new ApiResponse(200, {
+                  message_id,
+                  status: "recieved",
+                })
+              );
+            });
         else {
-          if (!fcm_token || fcm_token.trim() === "") return callback(new ApiError(400, "fcm_token not found."));
+          if (!fcm_token || fcm_token.trim() === "")
+            return callback(new ApiError(400, "fcm_token not found."));
           const fcm_message = {
             data: {
               message_id,
@@ -130,7 +148,7 @@ ws.on("connection", (socket) => {
               avatar_url,
               phone_number,
               display_name,
-              caption: caption ?? ""
+              caption: caption ?? "",
             },
             token: fcm_token,
             notification: {
@@ -173,10 +191,14 @@ ws.on("connection", (socket) => {
             .catch((err) => {
               console.error(err);
               return callback(
-                new ApiResponse(400, {
-                  message_id,
-                  status: "failed",
-                }, "Failed to send message")
+                new ApiResponse(
+                  400,
+                  {
+                    message_id,
+                    status: "failed",
+                  },
+                  "Failed to send message"
+                )
               );
             });
         }
