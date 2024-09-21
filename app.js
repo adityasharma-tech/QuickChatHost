@@ -2,18 +2,26 @@ import http from "http";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+
+// firebase
 import admin from "firebase-admin";
 import { initializeApp } from "firebase-admin/app";
-import { Server as SocketIO } from "socket.io";
-import jwt from "jsonwebtoken";
-import { createClient as createRedisClient } from "redis";
-import { ApiResponse } from "./utils/ApiResponse.js";
-import { ApiError } from "./utils/ApiError.js";
 import { getMessaging } from "firebase-admin/messaging";
 
-import { PORT } from "./lib/constants.js";
+// sockets & Db
+import { Server as SocketIO } from "socket.io";
+
+import { createClient as createRedisClient } from "redis";
 import connectDB from "./lib/db.js";
+
+// &utils
+import { ApiResponse } from "./utils/ApiResponse.js";
+import { ApiError } from "./utils/ApiError.js";
+
+// constants
+import { PORT } from "./lib/constants.js";
 
 dotenv.config({ path: "./.env" });
 
@@ -78,11 +86,11 @@ ws.use((socket, next) => {
 // socket connections
 ws.on("connection", (socket) => {
   console.log(
-    `New user connected via socket: ${socket.user.custom_data.phone_number} - ${socket.id}`
+    `New user connected via socket: ${socket.user.user_data.phoneNumber} - ${socket.id}`
   );
 
   redisClient
-    .set(socket.user.custom_data.phone_number, socket.id)
+    .set(socket.user.user_data.phoneNumber, socket.id)
     .catch((err) => {
       console.error("Failed to map phone_number to socket.id", err);
       socket.disconnect();
@@ -208,9 +216,9 @@ ws.on("connection", (socket) => {
 
   socket.on("disconnect", async () => {
     console.log(
-      `user disconnected with pn: ${socket.user.custom_data.phone_number} & socket id: ${socket.id}`
+      `user disconnected with pn: ${socket.user.user_data.phoneNumber} & socket id: ${socket.id}`
     );
-    await redisClient.del(socket.user.custom_data.phone_number);
+    await redisClient.del(socket.user.user_data.phoneNumber);
   });
 });
 
