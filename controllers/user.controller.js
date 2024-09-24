@@ -43,6 +43,8 @@ const authenticate = asyncHandler(async (req, res) => {
   if (!verification_token)
     return res.status(400).json(new ApiError(400, "verification_token is required."));
 
+  console.log("@authentication.verification_token:", verification_token);
+
   const { data } = await axios.post(
     `${process.env.MSG91_ENDPOINT}/widget/verifyAccessToken`,
     {
@@ -73,6 +75,7 @@ const authenticate = asyncHandler(async (req, res) => {
         algorithm: "HS256",
       }
     );
+    console.log("@authentication.token:", token, process.env.ACCESS_TOKEN_SECRET);
     return res.status(200).json(
       new ApiResponse(
         200,

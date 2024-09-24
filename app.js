@@ -33,7 +33,8 @@ const redisClient = createRedisClient({
   password: process.env.REDIS_PASSWORD,
   socket: {
     host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT,
+    port: 16399,
+    rejectUnauthorized: false,
   },
 });
 
@@ -58,7 +59,9 @@ redisClient.on("error", (err) => {
   process.exit(1);
 });
 
-(async () => await redisClient.connect())();
+redisClient.connect().then(() => {
+  console.log("Connected to Redis Client Successfully.");
+});
 connectDB();
 
 const io = new SocketIO(server, {
@@ -77,7 +80,7 @@ ws.use((socket, next) => {
   const token = socket.handshake.auth.token || socket.handshake.headers?.token;
   if (!token) next(new Error("Authentication error"));
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) next(new Error("Authentication error"));
+    if (err) return next(new Error("Authentication error"));
     socket.user = decoded;
     next();
   });
@@ -86,18 +89,18 @@ ws.use((socket, next) => {
 // socket connections
 ws.on("connection", (socket) => {
   console.log(
-    `New user connected via socket: ${socket.user.user_data.phoneNumber} - ${socket.id}`
+    `New user connected via socket: ${socket.user.user_data.phone_number} - ${socket.id}`
   );
 
   redisClient
-    .set(socket.user.user_data.phoneNumber, socket.id)
+    .set(socket.user.user_data.phone_number, socket.id)
     .catch((err) => {
       console.error("Failed to map phone_number to socket.id", err);
       socket.disconnect();
     });
 
   socket.on("message:create", (data, callback) => {
-    console.log("new message arrived with data: ", data, callback);
+    console.log("new message arrived with data: ", data);
     const {
       message_id,
       message_mode,
@@ -108,6 +111,15 @@ ws.on("connection", (socket) => {
       metadata: { avatar_url, phone_number, display_name },
     } = data;
 
+    console.log([
+      message_id,
+      message_mode,
+      message,
+      avatar_url,
+      phone_number,
+      display_name,
+    ]);
+
     if (
       [
         message_id,
@@ -116,7 +128,6 @@ ws.on("connection", (socket) => {
         avatar_url,
         phone_number,
         display_name,
-        caption,
       ].some((field) => field?.trim() === "")
     ) {
       return callback(new ApiError(400, "All fields are required."));
@@ -125,33 +136,35 @@ ws.on("connection", (socket) => {
     redisClient
       .get(phone_number)
       .then((value) => {
-        if (value)
-          ws.to(value)
-            .emit("message:recieved", {
+        console.log("redisClient", "phone_number", "available", value);
+        if (value) {
+          console.log("Sending message through socket server");
+          ws.to(value).emit("message:recieved", {
+            message_id,
+            message_mode,
+            reply_id: reply_id ?? "",
+            _from: socket.user.user_data.phone_number,
+            message,
+            phone_number,
+            display_name,
+            caption: caption ?? "",
+          });
+          return callback(
+            new ApiResponse(200, {
               message_id,
-              message_mode,
-              reply_id: reply_id ?? "",
-              message,
-              phone_number,
-              display_name,
-              caption: caption ?? "",
+              status: "recieved",
             })
-            .then(() => {
-              return callback(
-                new ApiResponse(200, {
-                  message_id,
-                  status: "recieved",
-                })
-              );
-            });
-        else {
+          );
+        } else {
           if (!fcm_token || fcm_token.trim() === "")
             return callback(new ApiError(400, "fcm_token not found."));
+          console.log("Sending message through firebase messaging");
           const fcm_message = {
             data: {
               message_id,
               message_mode,
               reply_id: reply_id ?? "",
+              _from: socket.user.user_data.phone_number,
               message,
               avatar_url,
               phone_number,
@@ -164,6 +177,7 @@ ws.on("connection", (socket) => {
               body: message,
             },
             android: {
+              priority: 'high',
               notification: {
                 imageUrl: avatar_url,
                 color: "#FBC508",
@@ -173,6 +187,7 @@ ws.on("connection", (socket) => {
               payload: {
                 aps: {
                   "mutable-content": 1,
+                  'content-available': 1,
                 },
               },
               fcm_options: {
@@ -185,7 +200,6 @@ ws.on("connection", (socket) => {
               },
             },
           };
-          console.log(fcm_message.data);
           getMessaging(firebaseApp)
             .send(fcm_message)
             .then(() => {
@@ -211,14 +225,28 @@ ws.on("connection", (socket) => {
             });
         }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        if (err.code === "messaging/registration-token-not-registered") {
+          console.error("Failed to send FCM message:", err.message);
+          return callback(
+            new ApiResponse(
+              400,
+              {
+                message_id,
+                status: "failed",
+              },
+              "Failed to send message"
+            )
+          );
+        }
+      });
   });
 
   socket.on("disconnect", async () => {
     console.log(
-      `user disconnected with pn: ${socket.user.user_data.phoneNumber} & socket id: ${socket.id}`
+      `user disconnected with pn: ${socket.user.user_data.phone_number} & socket id: ${socket.id}`
     );
-    await redisClient.del(socket.user.user_data.phoneNumber);
+    await redisClient.del(socket.user.user_data.phone_number);
   });
 });
 
@@ -228,8 +256,10 @@ app.get("/", (_, res) => {
 
 // routes import
 import userRouter from "./routes/public/user.routes.js";
+import contactsRouter from "./routes/public/contacts.routes.js";
 
 // Router
 app.use("/api/v1/user", userRouter);
+app.use("/api/v1/contacts", contactsRouter);
 
 server.listen(PORT, () => console.log(`Server is listening on port: ${PORT}`));

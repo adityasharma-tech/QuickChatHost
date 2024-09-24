@@ -131,3 +131,4 @@ dist
 
 # config sercret
 *.creds.json
+*.exe
