@@ -11,7 +11,7 @@ const userdataSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    avatarUrl: {
+    avatar_id: {
       type: String,
       default: "https://i.pravatar.cc/150?uid=random",
     },
@@ -28,6 +28,7 @@ const userdataSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: 'userdata'
   }
 );
 

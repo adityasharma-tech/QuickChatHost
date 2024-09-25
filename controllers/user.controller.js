@@ -13,12 +13,10 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400,"Avatar file is missing");
   }
 
-  // TODO: delete old image
-
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-  console.log(avatarLocalPath)
+  console.log(avatarLocalPath, avatar)
 
-  if (!avatar?.url) {
+  if (!avatar?.public_id) {
     throw new ApiError(400, "Error while uploading on avatar")
   }
 
@@ -28,7 +26,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     },
     {
       $set: {
-        avatarUrl: avatar.url,
+        avatar_id: avatar.public_id,
       },
     },
     { new: true }
