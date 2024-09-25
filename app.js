@@ -265,6 +265,6 @@ app.use("/api/v1/user", userRouter);
 app.use("/api/v1/contacts", contactsRouter);
 app.use(errorHandler)
 
-fs.chmodSync('/public/temp', 0o777)
+fs.chmodSync('./public/temp', 0o777)
 
 server.listen(PORT, () => console.log(`Server is listening on port: ${PORT}`));
