@@ -257,9 +257,11 @@ app.get("/", (_, res) => {
 // routes import
 import userRouter from "./routes/public/user.routes.js";
 import contactsRouter from "./routes/public/contacts.routes.js";
+import { errorHandler } from "./utils/errorHandler.js";
 
 // Router
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/contacts", contactsRouter);
+app.use(errorHandler)
 
 server.listen(PORT, () => console.log(`Server is listening on port: ${PORT}`));

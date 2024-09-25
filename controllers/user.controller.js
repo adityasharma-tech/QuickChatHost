@@ -3,35 +3,36 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.model.js";
-import mongoose from "mongoose";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { userdata } from "../models/user.model.js";
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
 
   if (!avatarLocalPath) {
-    return res.status(400).json(new ApiError(400, "Avatar file is missing"))
+    throw new ApiError(400,"Avatar file is missing");
   }
 
   // TODO: delete old image
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
+  console.log(avatarLocalPath)
 
-  if (!avatar.url) {
-    return res.status(400).json(new ApiError(400, "Error while uploading on avatar"));
+  if (!avatar?.url) {
+    throw new ApiError(400, "Error while uploading on avatar")
   }
 
-  const user = await User.findByIdAndUpdate(
+  const user = await userdata.findOneAndUpdate(
     {
-      phone_number: req.user.phone_number,
+      phoneNumber: req.user.user_data.phone_number,
     },
     {
       $set: {
-        avatar: avatar.url,
+        avatarUrl: avatar.url,
       },
     },
     { new: true }
-  ).select("-password");
+  );
 
   return res
     .status(200)
@@ -41,7 +42,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 const authenticate = asyncHandler(async (req, res) => {
   const { verification_token } = req.body;
   if (!verification_token)
-    return res.status(400).json(new ApiError(400, "verification_token is required."));
+    throw new ApiError(400, "verification_token is required.")
 
   console.log("@authentication.verification_token:", verification_token);
 
@@ -86,9 +87,7 @@ const authenticate = asyncHandler(async (req, res) => {
       )
     );
   } else {
-    return res.status(400).json(
-      new ApiError(400, data.message)
-    )
+    throw new ApiError(400, data.message);
   }
 });
 

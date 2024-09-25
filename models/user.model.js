@@ -1,54 +1,36 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
+const userdataSchema = new mongoose.Schema(
   {
-    displayName: {
+    name: {
       type: String,
       required: true,
       trim: true,
     },
-    phoneNumber: {
+    user_id: {
       type: String,
-      required: true,
-      trim: true,
+      required: false,
     },
     avatarUrl: {
       type: String,
       default: "https://i.pravatar.cc/150?uid=random",
     },
-    refreshToken: {
+    created: Boolean,
+    phoneNumber: {
       type: String,
+      trim: true,
+      required: true
     },
+    fcm_token: {
+      type: String,
+      requried: false
+    }
   },
   {
     timestamps: true,
   }
 );
 
-userSchema.methods.generateAccessToken = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-      phoneNumber: this.phoneNumber,
-      avatarUrl: this.avatarUrl,
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
-    }
-  );
-};
-userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign(
-    {
-      _id: this._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET,
-    {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-    }
-  );
-};
 
-export const User =
-  mongoose.model("User", userSchema) || mongoose.models("User");
+export const userdata =
+  mongoose.model("userdata", userdataSchema) || mongoose.models.userdata;
