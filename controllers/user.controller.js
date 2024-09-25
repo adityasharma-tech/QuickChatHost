@@ -22,7 +22,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const user = await userdata.findOneAndUpdate(
     {
-      phoneNumber: req.user.user_data.phone_number,
+      phone_number: req.user.user_data.phone_number,
     },
     {
       $set: {

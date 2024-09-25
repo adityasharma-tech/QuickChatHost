@@ -16,7 +16,7 @@ const userdataSchema = new mongoose.Schema(
       default: "https://i.pravatar.cc/150?uid=random",
     },
     created: Boolean,
-    phoneNumber: {
+    phone_number: {
       type: String,
       trim: true,
       required: true
