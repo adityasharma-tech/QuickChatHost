@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import express from "express";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
-import fs from 'fs'
+import fs from "fs";
 
 // firebase
 import admin from "firebase-admin";
@@ -19,6 +19,7 @@ import connectDB from "./lib/db.js";
 
 // &utils
 import { ApiResponse } from "./utils/ApiResponse.js";
+import { errorHandler } from "./utils/errorHandler.js";
 import { ApiError } from "./utils/ApiError.js";
 
 // constants
@@ -116,6 +117,7 @@ ws.on("connection", (socket) => {
       message_id,
       message_mode,
       message,
+      fcm_token,
       avatar_url,
       phone_number,
       display_name,
@@ -157,6 +159,7 @@ ws.on("connection", (socket) => {
             })
           );
         } else {
+          console.log("here", fcm_token.toString(), "::");
           if (!fcm_token || fcm_token.trim() === "")
             return callback(new ApiError(400, "fcm_token not found."));
           console.log("Sending message through firebase messaging");
@@ -178,7 +181,7 @@ ws.on("connection", (socket) => {
               body: message,
             },
             android: {
-              priority: 'high',
+              priority: "high",
               notification: {
                 imageUrl: avatar_url,
                 color: "#FBC508",
@@ -188,7 +191,7 @@ ws.on("connection", (socket) => {
               payload: {
                 aps: {
                   "mutable-content": 1,
-                  'content-available': 1,
+                  "content-available": 1,
                 },
               },
               fcm_options: {
@@ -227,19 +230,17 @@ ws.on("connection", (socket) => {
         }
       })
       .catch((err) => {
-        if (err.code === "messaging/registration-token-not-registered") {
-          console.error("Failed to send FCM message:", err.message);
-          return callback(
-            new ApiResponse(
-              400,
-              {
-                message_id,
-                status: "failed",
-              },
-              "Failed to send message"
-            )
-          );
-        }
+        console.error("Failed to send FCM message:", err.message);
+        return callback(
+          new ApiResponse(
+            400,
+            {
+              message_id,
+              status: "failed",
+            },
+            "Failed to send message"
+          )
+        );
       });
   });
 
@@ -258,13 +259,14 @@ app.get("/", (_, res) => {
 // routes import
 import userRouter from "./routes/public/user.routes.js";
 import contactsRouter from "./routes/public/contacts.routes.js";
-import { errorHandler } from "./utils/errorHandler.js";
+import conversationRouter from "./routes/public/conversation.routes.js";
 
 // Router
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/contacts", contactsRouter);
-app.use(errorHandler)
+app.use("/api/v1/conversation", conversationRouter);
+app.use(errorHandler);
 
-fs.chmodSync('./public/temp', 0o777)
+fs.chmodSync("./public/temp", 0o777);
 
 server.listen(PORT, () => console.log(`Server is listening on port: ${PORT}`));

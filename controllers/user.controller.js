@@ -13,10 +13,9 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400,"Avatar file is missing");
   }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  console.log(avatarLocalPath, avatar)
+  const avatar = await uploadOnCloudinary(avatarLocalPath, `${req.user.user_data.phone_number}-av`);
 
-  if (!avatar?.public_id) {
+  if (!avatar?.secure_url) {
     throw new ApiError(400, "Error while uploading on avatar")
   }
 
@@ -26,7 +25,33 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     },
     {
       $set: {
-        avatar_id: avatar.public_id,
+        avatar_url: avatar.secure_url,
+      },
+    },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Avatar image updated successfully"));
+});
+
+const updateUserData = asyncHandler(async (req, res) => {
+
+  const {name, quotes} = req.body;
+
+  if (!(name || quotes)) {
+    throw new ApiError(400,"User data is missing");
+  }
+
+  const user = await userdata.findOneAndUpdate(
+    {
+      phone_number: req.user.user_data.phone_number,
+    },
+    {
+      $set: {
+        name,
+        quotes
       },
     },
     { new: true }
@@ -89,4 +114,4 @@ const authenticate = asyncHandler(async (req, res) => {
   }
 });
 
-export { authenticate, updateUserAvatar };
+export { authenticate, updateUserAvatar, updateUserData };

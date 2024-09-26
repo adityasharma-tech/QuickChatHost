@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const userdataSchema = new mongoose.Schema(
   {
@@ -7,11 +8,16 @@ const userdataSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    quotes: {
+      type: String,
+      requried: false,
+      trim: true,
+    },
     user_id: {
       type: String,
       required: false,
     },
-    avatar_id: {
+    avatar_url: {
       type: String,
       default: "https://i.pravatar.cc/150?uid=random",
     },
@@ -19,19 +25,19 @@ const userdataSchema = new mongoose.Schema(
     phone_number: {
       type: String,
       trim: true,
-      required: true
+      required: true,
     },
     fcm_token: {
       type: String,
-      requried: false
-    }
+      requried: false,
+    },
   },
   {
     timestamps: true,
-    collection: 'userdata'
+    collection: "userdata",
   }
 );
 
-
+userdataSchema.plugin(mongooseAggregatePaginate);
 export const userdata =
   mongoose.model("userdata", userdataSchema) || mongoose.models.userdata;
